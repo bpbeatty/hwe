@@ -1,6 +1,6 @@
 ARG IMAGE_NAME="${IMAGE_NAME:-silverblue}"
 ARG SOURCE_IMAGE="${SOURCE_IMAGE:-silverblue-main}"
-ARG SOURCE_ORG="${SOURCE_ORG:-ublue-os}"
+ARG SOURCE_ORG="${SOURCE_ORG:-bpbeatty}"
 ARG BASE_IMAGE="ghcr.io/${SOURCE_ORG}/${SOURCE_IMAGE}"
 ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-40}"
 
@@ -9,7 +9,7 @@ FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION} AS main
 ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-40}"
 ARG KERNEL_FLAVOR="${KERNEL_FLAVOR:-main}"
 ARG IMAGE_NAME="${IMAGE_NAME:-silverblue}"
-ARG IMAGE_VENDOR="${IMAGE_VENDOR:-ublue-os}"
+ARG IMAGE_VENDOR="${IMAGE_VENDOR:-bpbeatty}"
 ARG RPMFUSION_MIRROR=""
 
 COPY *.sh /tmp/
@@ -27,14 +27,14 @@ RUN mkdir -p /var/lib/alternatives && \
 
 FROM main AS nvidia
 
-ARG SOURCE_ORG="${SOURCE_ORG:-ublue-os}"
+ARG SOURCE_ORG="${SOURCE_ORG:-bpbeatty}"
 ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-40}"
 ARG KERNEL_FLAVOR="${KERNEL_FLAVOR:-main}"
 ARG IMAGE_NAME="${IMAGE_NAME:-silverblue}"
-ARG IMAGE_VENDOR="${IMAGE_VENDOR:-ublue-os}"
+ARG IMAGE_VENDOR="${IMAGE_VENDOR:-bpbeatty}"
 ARG RPMFUSION_MIRROR=""
 
-COPY --from=ghcr.io/${SOURCE_ORG}/akmods-nvidia:${KERNEL_FLAVOR}-${FEDORA_MAJOR_VERSION} /rpms /tmp/akmods-rpms
+COPY --from=ghcr.io/ublue-os/akmods-nvidia:${KERNEL_FLAVOR}-${FEDORA_MAJOR_VERSION} /rpms /tmp/akmods-rpms
 
 COPY *.sh /tmp/
 
