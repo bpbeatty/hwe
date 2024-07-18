@@ -3,11 +3,12 @@ on:
   workflow_call:
     inputs:
       fedora_version:
-        description: 'The Fedora release version: 39, 40, etc'
+        description: "The Fedora release version: 39, 40, etc"
         required: true
         type: string
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_REGISTRY_AKMODS: ghcr.io/ublue-os
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.fedora_version }}
@@ -49,6 +50,10 @@ jobs:
           # Don't build/push "main" since it would be a duplicate of the "base" `*-main` images
           - kernel_flavor: main
             image_target: main
+          # There is no more asus on Fedora -1
+          - kernel_flavor: asus
+            fedora_version: 39
+
     steps:
       # Checkout push-to-registry action GitHub repository
       - name: Checkout Push to Registry action
@@ -156,7 +161,30 @@ jobs:
         uses: EyeCantCU/cosign-action/verify@v0.2.2
         with:
           containers: akmods-nvidia:${{ matrix.kernel_flavor}}-${{ matrix.fedora_version }}
-          registry: ghcr.io/ublue-os
+          registry: ${{ env.IMAGE_REGISTRY_AKMODS }}
+
+      - name: Get current version
+        id: labels
+        uses: Wandalen/wretry.action@v3.5.0
+        with:
+          attempt_limit: 3
+          attempt_delay: 15000
+          command: |
+            set -eo pipefail
+            skopeo inspect docker://${{ env.IMAGE_REGISTRY }}/${{ env.SOURCE_IMAGE }}:${{ matrix.fedora_version }} > source.json
+            ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
+            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
+              echo "inspected image version must not be empty or null"
+              exit 1
+            fi
+            echo "SOURCE_IMAGE_VERSION=$ver" >> $GITHUB_ENV
+            skopeo inspect docker://${{ env.IMAGE_REGISTRY_AKMODS }}/${{ matrix.kernel_flavor }}-kernel:${{ matrix.fedora_version }} > kernel.json
+            linux=$(jq -r '.Labels["ostree.linux"]' kernel.json)
+            if [ -z "$linux" ] || [ "null" = "$linux" ]; then
+              echo "inspected image linux version must not be empty or null"
+              exit 1
+            fi
+            echo "KERNEL_VERSION=$linux" >> $GITHUB_ENV
 
       - name: Pull main and akmods-nvidia images
         uses: Wandalen/wretry.action@v3.5.0
@@ -167,31 +195,8 @@ jobs:
             # pull the base image used for FROM in containerfile so
             # we can retry on that unfortunately common failure case
             podman pull ${{ env.IMAGE_REGISTRY }}/${{ env.SOURCE_IMAGE }}:${{ matrix.fedora_version }}
-            podman pull ghcr.io/ublue-os/akmods-nvidia:${{ matrix.kernel_flavor }}-${{ matrix.fedora_version }}
-
-      - name: Get current version
-        id: labels
-        uses: Wandalen/wretry.action@v3.5.0
-        with:
-          attempt_limit: 3
-          attempt_delay: 15000
-          command: |
-            set -eo pipefail
-            skopeo inspect docker://ghcr.io/ublue-os/${{ env.SOURCE_IMAGE }}:${{ matrix.fedora_version }} > source.json
-            ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
-            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
-              echo "inspected image version must not be empty or null"
-              exit 1
-            fi
-            echo "SOURCE_IMAGE_VERSION=$ver" >> $GITHUB_ENV
-
-            skopeo inspect docker://ghcr.io/ublue-os/akmods-nvidia:${{ matrix.kernel_flavor }}-${{ matrix.fedora_version }} > akmods.json
-            linux=$(jq -r '.Labels["ostree.linux"]' akmods.json)
-            if [ -z "$linux" ] || [ "null" = "$linux" ]; then
-              echo "inspected image linux version must not be empty or null"
-              exit 1
-            fi
-            echo "KERNEL_VERSION=$linux" >> $GITHUB_ENV
+            podman pull ${{ env.IMAGE_REGISTRY_AKMODS }}/akmods-nvidia:${{ matrix.kernel_flavor }}-${{ matrix.fedora_version }}
+            podman pull ${{ env.IMAGE_REGISTRY_AKMODS }}/${{ matrix.kernel_flavor}}-kernel:${{ env.KERNEL_VERSION }}
 
       # Build metadata
       - name: Image Metadata
@@ -223,6 +228,7 @@ jobs:
             SOURCE_IMAGE=${{ env.SOURCE_IMAGE }}
             FEDORA_MAJOR_VERSION=${{ matrix.fedora_version }}
             KERNEL_FLAVOR=${{ matrix.kernel_flavor }}
+            KERNEL_VERSION=${{ env.KERNEL_VERSION }}
             RPMFUSION_MIRROR=${{ vars.RPMFUSION_MIRROR }}
           labels: ${{ steps.meta.outputs.labels }}
           oci: false
