@@ -225,7 +225,6 @@ jobs:
             FEDORA_MAJOR_VERSION=${{ matrix.fedora_version }}
             KERNEL_FLAVOR=${{ matrix.kernel_flavor }}
             KERNEL_VERSION=${{ env.KERNEL_VERSION }}
-            RPMFUSION_MIRROR=${{ vars.RPMFUSION_MIRROR }}
           labels: ${{ steps.meta.outputs.labels }}
           oci: false
           extra-args: |
@@ -288,7 +287,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Sign container
-      - uses: sigstore/cosign-installer@v3.6.0
+      - uses: sigstore/cosign-installer@v3.7.0
         if: github.event_name != 'pull_request'
 
       - name: Sign container image

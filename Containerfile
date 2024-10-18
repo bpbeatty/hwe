@@ -16,7 +16,6 @@ ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-40}"
 ARG KERNEL_FLAVOR="${KERNEL_FLAVOR:-main}"
 ARG IMAGE_NAME="${IMAGE_NAME:-silverblue}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-bpbeatty}"
-ARG RPMFUSION_MIRROR=""
 ARG KERNEL_VERSION="${KERNEL_VERSION:-6.9.7-200.fc40.x86_64}"
 
 RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
@@ -41,14 +40,13 @@ ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-40}"
 ARG KERNEL_FLAVOR="${KERNEL_FLAVOR:-main}"
 ARG IMAGE_NAME="${IMAGE_NAME:-silverblue}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-bpbeatty}"
-ARG RPMFUSION_MIRROR=""
 
 RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=bind,from=ctx,src=/,dst=/ctx \
     --mount=type=bind,from=akmods_nvidia,src=/rpms,dst=/tmp/akmods-rpms \
     mkdir -p /var/lib/alternatives && \
     IMAGE_FLAVOR=nvidia /ctx/image-info.sh && \
-    /ctx/nvidia-install.sh && \
+    NVIDIA_FLAVOR=nvidia /ctx/nvidia-install.sh && \
     /ctx/build-initramfs.sh && \
     mv /var/lib/alternatives /staged-alternatives && \
     /ctx/cleanup.sh && \
