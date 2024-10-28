@@ -49,6 +49,8 @@ jobs:
           # There is no more asus on Fedora -1
           - kernel_flavor: asus
             fedora_version: 39
+          - kernel_flavor: surface
+            fedora_version: 41
 
     steps:
       # Checkout push-to-registry action GitHub repository
@@ -85,14 +87,17 @@ jobs:
             IS_LATEST_VERSION=false
             IS_STABLE_VERSION=true
             IS_GTS_VERSION=true
+            IS_BETA_VERSION=false
           elif [[ "${{ matrix.fedora_version }}" -eq "40" ]]; then
             IS_LATEST_VERSION=true
             IS_STABLE_VERSION=true
             IS_GTS_VERSION=false
+            IS_BETA_VERSION=false
           elif [[ "${{ matrix.fedora_version }}" -eq "41" ]]; then
             IS_LATEST_VERSION=false
             IS_STABLE_VERSION=false
             IS_GTS_VERSION=false
+            IS_BETA_VERSION=true
           fi
 
           COMMIT_TAGS=()
@@ -126,6 +131,11 @@ jobs:
              [[ "${IS_STABLE_VERSION}" == "true" ]]; then
               BUILD_TAGS+=("gts-${TIMESTAMP}")
               BUILD_TAGS+=("gts")
+          fi
+
+          if [[ "${IS_BETA_VERSION}" == "true" ]]; then
+              BUILD_TAGS+=("beta-${TIMESTAMP}")
+              BUILD_TAGS+=("beta")
           fi
 
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
