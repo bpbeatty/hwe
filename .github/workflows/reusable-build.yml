@@ -8,7 +8,7 @@ on:
         type: string
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
-  IMAGE_REGISTRY_AKMODS: ghcr.io/ublue-os
+  IMAGE_REGISTRY_SRC: ghcr.io/ublue-os
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.fedora_version }}
@@ -29,8 +29,8 @@ jobs:
           - ${{ inputs.fedora_version }}
         kernel_flavor:
           - main
-          # - asus
-          # - surface
+          # - asus # Remove when F42 releases
+          # - surface # Remove when F42 releases
         image_name:
           - silverblue
           - kinoite
@@ -49,6 +49,8 @@ jobs:
           # There is no more asus on Fedora -1
           - kernel_flavor: asus
             fedora_version: 39
+          - kernel_flavor: asus
+            fedora_version: 40
           - kernel_flavor: surface
             fedora_version: 41
 
@@ -167,11 +169,11 @@ jobs:
         uses: EyeCantCU/cosign-action/verify@v0.3.0
         with:
           containers: akmods-nvidia:${{ matrix.kernel_flavor}}-${{ matrix.fedora_version }}
-          registry: ${{ env.IMAGE_REGISTRY_AKMODS }}
+          registry: ${{ env.IMAGE_REGISTRY_SRC }}
 
       - name: Get current version
         id: labels
-        uses: Wandalen/wretry.action@v3.7.3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
           attempt_limit: 3
           attempt_delay: 15000
@@ -184,7 +186,7 @@ jobs:
               exit 1
             fi
             echo "SOURCE_IMAGE_VERSION=$ver" >> $GITHUB_ENV
-            skopeo inspect docker://${{ env.IMAGE_REGISTRY_AKMODS }}/${{ matrix.kernel_flavor }}-kernel:${{ matrix.fedora_version }} > kernel.json
+            skopeo inspect docker://${{ env.IMAGE_REGISTRY_SRC }}/${{ matrix.kernel_flavor }}-kernel:${{ matrix.fedora_version }} > kernel.json
             linux=$(jq -r '.Labels["ostree.linux"]' kernel.json)
             if [ -z "$linux" ] || [ "null" = "$linux" ]; then
               echo "inspected image linux version must not be empty or null"
@@ -193,7 +195,7 @@ jobs:
             echo "KERNEL_VERSION=$linux" >> $GITHUB_ENV
 
       - name: Pull main and akmods-nvidia images
-        uses: Wandalen/wretry.action@v3.7.3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
           attempt_limit: 3
           attempt_delay: 15000
@@ -201,8 +203,8 @@ jobs:
             # pull the base image used for FROM in containerfile so
             # we can retry on that unfortunately common failure case
             podman pull ${{ env.IMAGE_REGISTRY }}/${{ env.SOURCE_IMAGE }}:${{ matrix.fedora_version }}
-            podman pull ${{ env.IMAGE_REGISTRY_AKMODS }}/akmods-nvidia:${{ matrix.kernel_flavor }}-${{ matrix.fedora_version }}
-            podman pull ${{ env.IMAGE_REGISTRY_AKMODS }}/${{ matrix.kernel_flavor}}-kernel:${{ env.KERNEL_VERSION }}
+            podman pull ${{ env.IMAGE_REGISTRY_SRC }}/akmods-nvidia:${{ matrix.kernel_flavor }}-${{ matrix.fedora_version }}
+            podman pull ${{ env.IMAGE_REGISTRY_SRC }}/${{ matrix.kernel_flavor}}-kernel:${{ env.KERNEL_VERSION }}
 
       # Build metadata
       - name: Image Metadata
@@ -269,7 +271,7 @@ jobs:
 
       # Push the image to GHCR (Image Registry)
       - name: Push To GHCR
-        uses: Wandalen/wretry.action@v3.7.3
+        uses: Wandalen/wretry.action@v3.8.0
         id: push
         if: github.event_name != 'pull_request'
         env:
